@@ -2,7 +2,7 @@
 FROM php:8.1-apache
 
 # Fix Apache ServerName warning
-RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+RUN echo "ServerName liveness-bls.uk" >> /etc/apache2/apache2.conf
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -23,6 +23,14 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
+
+# Tune PHP for better performance
+RUN { \
+    echo 'opcache.enable=1'; \
+    echo 'opcache.memory_consumption=128'; \
+    echo 'opcache.max_accelerated_files=10000'; \
+    echo 'opcache.revalidate_freq=60'; \
+} >> /usr/local/etc/php/conf.d/opcache-recommended.ini
 
 # Optimize Apache for low-resource environments
 RUN { \
