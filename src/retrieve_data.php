@@ -2,33 +2,33 @@
 header('Content-Type: application/json');
 
 try {
-    // مسار قاعدة البيانات - تأكد أنه صحيح
-    $dbPath = __DIR__ . '/database.db';
+    $dbPath = getenv('DB_PATH') ?: __DIR__.'/database.db';
     
-    // 1. التحقق من وجود الملف
     if (!file_exists($dbPath)) {
-        throw new Exception("Database file not found at: " . $dbPath);
-    }
-    
-    // 2. التحقق من أذونات الملف
-    if (!is_readable($dbPath)) {
-        throw new Exception("Database file is not readable");
+        throw new Exception("Database file not found at: ".$dbPath);
     }
 
-    // 3. الاتصال بقاعدة البيانات
-    $db = new PDO('sqlite:' . $dbPath);
+    $db = new PDO('sqlite:'.$dbPath);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // 4. جلب قائمة الجداول الموجودة
-    $tables = $db->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll();
+    // إنشاء الجدول إذا لم يكن موجوداً
+    $db->exec("CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY,
+        name TEXT,
+        status TEXT)");
     
-    echo json_encode([
-        'database_path' => $dbPath,
-        'tables_exist' => !empty($tables),
-        'tables' => $tables,
-        'file_permissions' => substr(sprintf('%o', fileperms($dbPath)), -4)
-    ]);
+    // إضافة بيانات اختبارية إذا كانت الجداول فارغة
+    $count = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    if ($count == 0) {
+        $db->exec("INSERT INTO users (name, status) VALUES ('Test User', 'active')");
+    }
 
-} catch (Exception $e) {
+    // جلب البيانات
+    $stmt = $db->query("SELECT * FROM users");
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo json_encode($results ?: ['message' => 'No data found']);
+
+} catch(Exception $e) {
     echo json_encode(['error' => $e->getMessage()]);
 }
