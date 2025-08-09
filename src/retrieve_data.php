@@ -1,37 +1,31 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-
-// CORS للسماح بالوصول من المتصفح (يمكن تقييده لاحقًا)
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
-
-$user_id = isset($_GET['user_id']) ? trim($_GET['user_id']) : '';
-
-if (!$user_id) {
-    echo json_encode([]);
-    exit;
-}
-
-$dbfile = __DIR__ . '/db/data.db';
-if (!file_exists($dbfile)) {
-    echo json_encode([]);
-    exit;
-}
+header('Content-Type: application/json');
 
 try {
-    $db = new PDO('sqlite:' . $dbfile);
-    $stmt = $db->prepare('SELECT user_id, transaction_id, spoof_ip, liveness_id, selfie_path, meta, updated_at FROM liveness WHERE user_id = :uid');
-    $stmt->execute([':uid' => $user_id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($row) {
-        // إرجاع مصفوفة (كما يتوقع السكربت)
-        echo json_encode([$row]);
-    } else {
-        // إذا لم توجد بيانات نرجع مصفوفة فارغة
-        echo json_encode([]);
+    // 1. تحقق من وجود الملف
+    if(!file_exists('database.db')) {
+        throw new Exception("Database file not found");
     }
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([]);
+    
+    // 2. تحقق من أذونات الملف
+    if(!is_writable('database.db')) {
+        throw new Exception("Database is not writable");
+    }
+    
+    // 3. حاول الاتصال
+    $db = new PDO('sqlite:database.db');
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // 4. استعلام اختباري
+    $test = $db->query("SELECT name FROM sqlite_master WHERE type='table'");
+    $tables = $test->fetchAll();
+    
+    if(empty($tables)) {
+        echo json_encode(["error" => "No tables found in database"]);
+    } else {
+        echo json_encode(["tables" => $tables]);
+    }
+    
+} catch(Exception $e) {
+    echo json_encode(["error" => $e->getMessage()]);
 }
