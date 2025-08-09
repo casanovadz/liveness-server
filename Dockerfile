@@ -47,6 +47,14 @@ RUN { \
     echo 'KeepAliveTimeout 5'; \
 } >> /etc/apache2/conf-available/docker-php.conf
 
+# إنشاء مجلد البيانات وملف قاعدة البيانات
+RUN mkdir -p /var/www/html/data && \
+    touch /var/www/html/data/database.db && \
+    chown -R www-data:www-data /var/www/html/data && \
+    chmod 755 /var/www/html/data/database.db
+
+# تعيين متغير البيئة لمسار قاعدة البيانات
+ENV DB_PATH=/var/www/html/data/database.db
 # Copy application files
 COPY src/ /var/www/html/
 
